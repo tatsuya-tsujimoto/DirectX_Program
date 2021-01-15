@@ -1,8 +1,12 @@
 #include<Windows.h>
 #include"DirectGraphics.h"
+#include"DirectInput.h"
 
 #pragma comment(lib,"d3d9.lib")
 #pragma comment(lib,"d3dx9.lib")
+
+#pragma comment(lib, "dinput8.lib")
+#pragma comment(lib, "dxguid.lib")
 
 LRESULT CALLBACK WindowProcedure(HWND window_handle, UINT message_id, WPARAM wparam, LPARAM lparam)
 {
@@ -28,16 +32,16 @@ int APIENTRY WinMain(
 	WNDCLASS window_class =
 	{
 		//○は覚えた方が良い
-		CS_HREDRAW | CS_VREDRAW,			// クラスのスタイル（CS_HREDRAW と　CS_VREDRAW　は横と縦の変更許可設定）
-		WindowProcedure,					// ●ウィンドウプロシージャ
-		0,									// 補助メモリ
-		0,									// 補助メモリ
-		hInstance,							// ●このアプリのインスタンスハンドル
-		LoadIcon(NULL, IDI_APPLICATION),	// アイコン画像
-		LoadCursor(NULL, IDC_ARROW),		// カーソル画像
-		nullptr,							// 背景ブラシ(背景色)
-		nullptr,							// メニュー名
-		TEXT("WindowClass"),				// ●クラス名
+		CS_HREDRAW | CS_VREDRAW,			
+		WindowProcedure,					
+		0,									
+		0,									
+		hInstance,							
+		LoadIcon(NULL, IDI_APPLICATION),	
+		LoadCursor(NULL, IDC_ARROW),		
+		nullptr,							
+		nullptr,							
+		TEXT("WindowClass"),				
 	};
 
 	if (RegisterClass(&window_class) == 0)
@@ -47,33 +51,27 @@ int APIENTRY WinMain(
 
 	int width = 640;
 	int height = 480;
+	float rotate = 0.0f;
+	float go = 0.0f;
+	float slide = 0.0f;
 
 	// ウィンドウ作成
 	HWND window_handle = CreateWindow(
-		// ●登録しているウィンドウクラス構造体の名前
 		TEXT("WindowClass"),
-		// ●ウィンドウ名(タイトルバーに表示される)
 		TEXT("ウィンドウ生成サンプル"),
-		// ウィンドウスタイル
 		(WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME),
-		// ●表示位置
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
-		// ●サイズ
 		width,
 		height,
-		// 親ハンドル
 		NULL,
-		// メニューハンドル
 		NULL,
-		// ●インスタンスハンドル
 		hInstance,
-		// WM_CREATEメッセージでlpparamに渡したい値
 		NULL);
 
 	RECT window_rect;
 	if (GetWindowRect(window_handle, &window_rect) == false)
-	{//失敗
+	{
 		return 0;
 	}
 
@@ -82,25 +80,18 @@ int APIENTRY WinMain(
 	{
 		return 0;
 	}
-	// フレームサイズの算出
 	int frame_size_x = (window_rect.right - window_rect.left) - (client_rect.right - client_rect.left);
 	int frame_size_y = (window_rect.bottom - window_rect.top) - (client_rect.bottom - client_rect.top);
-	// リサイズの算出
 	int resize_width = frame_size_x + width;
 	int resize_height = frame_size_y + height;
 
-	// ウィンドウサイズの更新
 	SetWindowPos(
-		window_handle,// ●
+		window_handle,
 		nullptr,
-		// 表示位置
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
-		// ●リサイズの横幅
 		resize_width,
-		// ●リサイズの縦幅
 		resize_height,
-		// オプションの指定
 		SWP_NOMOVE
 	);
 	ShowWindow(window_handle, SW_SHOW);
@@ -110,16 +101,20 @@ int APIENTRY WinMain(
 	{
 		return 0;
 	}
+	if (InitDirectInput() == false)
+	{
+		return 0;
+	}
+	if (LoadTexture(TextureID::Tex1) == false)
+	{
+		return 0;
+	}
 
+	LoadXFile(TEXT("WitchWait.x"));
 	while (true)
 	{
 		MSG message;
-		/*
 
-		if (GetMessage(&message, nullptr, 0, 100))
-		{
-
-		}*/
 
 		if (PeekMessage(&message, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -134,19 +129,58 @@ int APIENTRY WinMain(
 		}
 		else
 		{
+			UpdateDirectInput();
+
+
+			SetUpProjection();
+
 			StartDrawing();
 
-			DrawPorigon();
-			DrawporigonWithTriangleList();
-			DrawporigonWithTriangleStrip();
-			DrawporigonWithTriangleFan();
+			Draw3DPorigon();
+
+			if (IsKeyHeld(DIK_RIGHT))
+			{
+				rotate += 0.5f;
+			}
+			else if (IsKeyHeld(DIK_LEFT))
+			{
+				rotate -= 0.5f;
+			}
+			if (IsKeyHeld(DIK_UP))
+			{
+				go -= 0.5f;
+			}
+			else if (IsKeyHeld(DIK_DOWN))
+			{
+				go += 0.5f;
+			}
+			if (IsKeyHeld(DIK_D))
+			{
+				slide -= 0.5f;
+			}
+			else if (IsKeyHeld(DIK_A))
+			{
+				slide += 0.5f;
+			}
+
+			DrawXFile(rotate, go, slide);
+
+			UpdateCamera(rotate, go, slide);
+
+			UpdateDirectInput();
+
+
 
 			FinishDrawing();
 		}
 
 
 	}
+	ReleaseTexture();
+
 	ReleaseDirectGraphics();
+	ReleaseDirectInput();
+
 
 	return 0;
 }
